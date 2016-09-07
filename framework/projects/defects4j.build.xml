@@ -274,6 +274,9 @@ project-specific build file ("project_id"/"project_id".build.xml) for the
         <echo message="classes.dir: ${classes.dir}" />
         <echo message="build.home: ${build.home}" />
 
+        <delete dir="test_reports" quiet="true" />
+        <mkdir dir="test_reports" />
+
         <junit printsummary="no" haltonfailure="no" haltonerror="no" fork="yes" forkmode="perBatch" showOutput="true">
             <classpath>
                 <!-- Make sure that instrumented classes appear at the beginning of the
@@ -292,8 +295,9 @@ project-specific build file ("project_id"/"project_id".build.xml) for the
 
             <sysproperty key="OUTFILE" value="${OUTFILE}"/>
             <formatter classname="edu.washington.cs.mut.testrunner.Formatter" usefile="false" />
-            <test name="${test.entry.class}" methods="${test.entry.method}" if="test.entry.class" />
-                <batchtest unless="test.entry.class">
+            <formatter type="brief" usefile="true" extension=".d4j"/>
+              <test name="${test.entry.class}" methods="${test.entry.method}" if="test.entry.class" todir="test_reports" />
+                <batchtest unless="test.entry.class" todir="test_reports">
                     <fileset dir="${d4j.test.dir}">
                         <include name="**/${d4j.test.include}"/>
                         <!-- Ignore helper classes that do not contain test cases -->
