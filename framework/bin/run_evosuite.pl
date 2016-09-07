@@ -30,7 +30,7 @@ run_evosuite.pl -- generate test suites using EvoSuite.
 
 =head1 SYNOPSIS
 
-  run_evosuite.pl -p project_id -v version_id -n test_id -o out_dir -c criterion [-b search_budget] [-a assertion_timeout] [-t tmp_dir] [-D] [-A]
+  run_evosuite.pl -p project_id -v version_id -n test_id -o out_dir [-b search_budget] [-a assertion_timeout] [-t tmp_dir] [-D] [-A]
 
 =head1 OPTIONS
 
@@ -55,11 +55,6 @@ The id of the generated test suite (i.e., which run of the same configuration).
 The root output directory for the generated test suite. The test suite and logs are
 written to:
 F<out_dir/project_id/version_id>.
-
-=item -c C<criterion>
-
-Generate tests for this criterion using the default search budget.
-See below for supported test criteria.
 
 =item -b C<search_budget>
 
@@ -94,26 +89,6 @@ This script runs EvoSuite for a particular program version. Tests can be generat
 all classes touched by the triggering test or 2) all classes that were modified to fix the
 bug. The latter is the default behavior.
 
-=head2 Supported test criteria and default search budgets
-
-=over 4
-
-=item * B<branch> => 100sec
-
-=item * B<weakmutation> => 100sec
-
-=item * B<strongmutation> => 200sec
-
-=back
-
-=cut
-my %criteria = ( branch         => 100,
-                 weakmutation   => 100,
-                 strongmutation => 200
-               );
-
-=pod
-
 =head2 EvoSuite configuration
 
 The filename of an optional EvoSuite configuration file can be provided with the
@@ -141,13 +116,12 @@ use Log;
 # Process arguments and issue usage message if necessary.
 #
 my %cmd_opts;
-getopts('p:v:o:n:t:c:b:a:AD', \%cmd_opts) or pod2usage(1);
+getopts('p:v:o:n:t:b:a:AD', \%cmd_opts) or pod2usage(1);
 
 pod2usage(1) unless defined $cmd_opts{p} and
                     defined $cmd_opts{v} and
                     defined $cmd_opts{n} and
-                    defined $cmd_opts{o} and
-                    defined $cmd_opts{c};
+                    defined $cmd_opts{o};
 my $PID = $cmd_opts{p};
 # Instantiate project
 my $project = Project::create_project($PID);
@@ -160,15 +134,11 @@ $project->contains_version_id($VID) or die "Version id ($VID) does not exist in 
 my $TID = $cmd_opts{n};
 $TID =~ /^\d+$/ or die "Wrong test_id format (\\d+): $TID!";
 my $OUT_DIR = $cmd_opts{o};
-my $CRITERION = $cmd_opts{c};
+#my $CRITERION = $cmd_opts{c};
 my $BUDGET = $cmd_opts{b};
 my $TIMEOUT = $cmd_opts{a} // 300;
 
-# Validate criterion and set search budget
-my $default = $criteria{$CRITERION};
-unless (defined $default) {
-    die "Unknown criterion: $CRITERION!";
-}
+my $default = 180; #$criteria{$CRITERION};
 $BUDGET = $BUDGET // $default;
 # Enable debugging if flag is set
 $DEBUG = 1 if defined $cmd_opts{D};
@@ -213,16 +183,16 @@ open(LIST, "<$TARGET_CLASSES") or die "Could not open list of target classes $TA
 my @classes = <LIST>;
 close(LIST);
 # Iterate over all modified classes
-my $log = "$TMP_DIR/$PID.$VID.$CRITERION.$TID.log";
+my $log = "$TMP_DIR/$PID.$VID.$TID.log";
 foreach my $class (@classes) {
     chomp $class;
-    $LOG->log_msg("Generate tests for: $class : $CRITERION : ${BUDGET}s");
+    $LOG->log_msg("Generate tests for: $class : ${BUDGET}s");
     # Call evosuite with criterion, time, and class name
     my $config = "$UTIL_DIR/evo.config";
     # Set config to environment variable if defined
     $config = $ENV{EVO_CONFIG_FILE} // $config;
 
-    $project->run_evosuite($CRITERION, $BUDGET, $class, $TIMEOUT, $config, $log) or die "Failed to generate tests!";
+    $project->run_evosuite($BUDGET, $class, $TIMEOUT, $config, $log) or die "Failed to generate tests!";
 }
 # Copy log file for this version id and test criterion to output directory
 system("mv $log $LOG_DIR") == 0 or die "Cannot copy log file!";
@@ -233,33 +203,31 @@ system("mv $log $LOG_DIR") == 0 or die "Cannot copy log file!";
 
 The source files of the generated test suite are compressed into an archive with the
 following name:
-F<C<project_id>-C<version_id>-evosuite-C<criterion>.C<test_id>.tar.bz2>
+F<C<project_id>-C<version_id>-evosuite.C<test_id>.tar.bz2>
 
 Examples:
 
 =over 4
 
-=item * F<Lang-12b-evosuite-weakmutation.1.tar.bz2>
-
-=item * F<Lang-12f-evosuite-branch.2.tar.bz2>
+=item * F<Lang-12b-evosuite.1.tar.bz2>
 
 =back
 
 The test suite archive is written to:
-F<out_dir/C<project_id>/evosuite-C<criterion>/C<test_id>>
+F<out_dir/C<project_id>/evosuite/C<test_id>>
 
 =cut
 
 # Compress generated tests
-my $archive = "$PID-$VID-evosuite-$CRITERION.$TID.tar.bz2";
-if (system("tar -cjf $TMP_DIR/$archive -C $TMP_DIR/evosuite-$CRITERION/ .") != 0) {
-    $LOG->log_msg("Error: cannot archive and ompress test suite!");
+my $archive = "$PID-$VID-evosuite.$TID.tar.bz2";
+if (system("tar -cjf $TMP_DIR/$archive -C $TMP_DIR/evosuite/ .") != 0) {
+    $LOG->log_msg("Error: cannot archive and compress test suite!");
 } else {
     # Move test suite to OUT_DIR/pid/suite_src/test_id
     #
-    # e.g., .../Lang/evosuite-branch/1
+    # e.g., .../Lang/evosuite/1
     #
-    my $dir = "$OUT_DIR/$PID/evosuite-$CRITERION/$TID";
+    my $dir = "$OUT_DIR/$PID/evosuite/$TID";
     system("mkdir -p $dir && mv $TMP_DIR/$archive $dir") == 0 or die "Cannot move test suite archive to output directory!";
 }
 

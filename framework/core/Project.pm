@@ -775,7 +775,7 @@ sub mutation_analysis_ext {
 
 =head2 Test generation related subroutines
 
-  $project->run_evosuite(target_criterion, target_time, target_class, assertion_timeout, config_file [, log_file])
+  $project->run_evosuite(target_time, target_class, assertion_timeout, config_file [, log_file])
 
 Runs EvoSuite on the checked-out program version.
 
@@ -784,7 +784,7 @@ Runs EvoSuite on the checked-out program version.
 # TODO: Extract common (config parsing etc.) code in run_evosuite and run_randoop
 sub run_evosuite {
     @_ >= 6 or die $ARG_ERROR;
-    my ($self, $criterion, $time, $class, $timeout, $config_file, $log_file) = @_;
+    my ($self, $time, $class, $timeout, $config_file, $log_file) = @_;
 
     my $cp_file = "$self->{prog_root}/project.cp";
     $self->_ant_call("export.cp.compile", "-Dfile.export=$cp_file") or die "Cannot determine project classpath";
@@ -805,15 +805,14 @@ sub run_evosuite {
               " && java -cp $TESTGEN_LIB_DIR/evosuite-current.jar org.evosuite.EvoSuite " .
                 "-class $class " .
                 "-projectCP $cp " .
-                "-Dtest_dir=evosuite-$criterion " .
-                "-criterion $criterion " .
+                "-Dtest_dir=evosuite " .
                 "-Dsearch_budget=$time " .
                 "-Dassertion_timeout=$timeout " .
                 "-Dshow_progress=false " .
                 "$config 2>&1";
 
     my $log;
-    my $ret = Utils::exec_cmd($cmd, "Run EvoSuite ($criterion;$config_file)", \$log);
+    my $ret = Utils::exec_cmd($cmd, "Run EvoSuite ($config_file)", \$log);
 
     if (defined $log_file) {
         open(OUT, ">>$log_file") or die "Cannot open log file: $!";
