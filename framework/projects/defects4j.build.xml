@@ -293,6 +293,9 @@ project-specific build file ("project_id"/"project_id".build.xml) for the
                 <path refid="d4j.lib.testgen.rt"/>
             </classpath>
 
+            <sysproperty key="EvoSuiteCompiledTestFolder" value="${build.home}/gen-tests" />
+            <formatter classname="org.evosuite.runtime.AntInitializingListener" />
+
             <sysproperty key="OUTFILE" value="${OUTFILE}"/>
             <formatter classname="edu.washington.cs.mut.testrunner.Formatter" usefile="false" />
             <formatter type="brief" usefile="true" extension=".d4j"/>
